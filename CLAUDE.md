@@ -40,7 +40,9 @@ must stay heavily unit-tested.
 - `internal/gitident` — git-derived project / instance / label (worktree-aware).
 - `internal/alloc` — deterministic block allocator + bind-probe (unit-tested).
 - `internal/state` — atomic `state.json` load/save.
-- `internal/ipc` — Unix-socket NDJSON client/server + message types.
+- `internal/ipc` — Unix-socket NDJSON client/server + message types (pure transport).
+- `internal/daemon` — the lease engine: wires alloc+state+config under one mutex,
+  implements `ipc.Handler`; importable by both `harbormasterd` and `hm daemon`.
 - `docs/` — architecture, socket protocol, Tilt integration.
 
 ## Conventions

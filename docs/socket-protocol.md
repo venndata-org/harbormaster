@@ -93,10 +93,20 @@ once assigned.
 ```json
 → {"op": "doctor"}
 ← {"ok": true,
-   "instances": 3,
+   "leases": 3,
    "headroom": 597,
    "squatters": [{"instance": "...", "service": "web", "port": 20001}]}
 ```
 
+- `leases` — number of leased instances.
 - `headroom` — number of free blocks remaining in the pool.
-- `squatters` — leased ports currently bound by some external process.
+- `squatters` — leased ports that fail a bind-probe, i.e. currently in use. Note:
+  in the MVP this includes a lease's **own** Tilt/services while that instance is
+  running (harbormaster does not track liveness yet — that is roadmap, SPEC §10).
+  So a squatter entry means "this leased port is occupied", which is expected for
+  an active checkout and only actionable for one you believe is idle.
+
+### `ping` — also used to detect a live daemon
+
+The CLI auto-start logic dials the socket and sends `ping`; a successful `ok:true`
+reply means a daemon is already running, so it does not start another.

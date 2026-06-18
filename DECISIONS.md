@@ -4,6 +4,26 @@ Engineering decisions made during the autonomous build that SPEC.md leaves open 
 that refine it). Newest first. If a decision changes the design, SPEC.md is amended
 to match — these notes capture the _why_.
 
+## 2026-06-18 — daemon / ipc
+
+### D7 — Lease engine lives in `internal/daemon`, not `cmd/`
+
+`internal/ipc` is pure transport (message types + client + server) and imports no
+other internal package. The lease logic (wiring alloc+state+config under one
+mutex, implementing `ipc.Handler`) lives in `internal/daemon` so it is importable
+by **both** the `harbormasterd` binary and the CLI's `hm daemon` subcommand —
+package `main` can't be imported. Auto-start (next increment) will re-exec the CLI
+as `hm daemon` rather than requiring a separate `harbormasterd` on PATH.
+
+### D8 — `doctor` squatters = leased ports currently bound (MVP)
+
+The daemon can't distinguish "a lease's own Tilt is using its port" from "an
+external process squats a leased port" without liveness tracking (roadmap). So MVP
+`doctor` reports any leased port that fails a bind-probe under `squatters`, and the
+docs/CLI phrase it as "in use" — expected for an active checkout, actionable only
+for one believed idle. Also renamed the reply's instance count to `leases` to avoid
+colliding with `list`'s `instances` array.
+
 ## 2026-06-18 — Phase 0
 
 ### D1 — CLI library: stdlib `flag` + a hand-rolled subcommand router

@@ -5,33 +5,27 @@
 package main
 
 import (
+	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
+	"log"
+
+	"github.com/venndata-org/harbormaster/internal/config"
+	"github.com/venndata-org/harbormaster/internal/daemon"
 )
 
 // version is overridden at build time via -ldflags "-X main.version=...".
 var version = "dev"
 
 func main() {
-	sock := socketPath()
-	fmt.Printf("harbormasterd %s\n", version)
-	fmt.Printf("socket: %s\n", sock)
-	// TODO(phase-5): bind the Unix socket and serve NDJSON ops
-	// (lease/list/release/prune/doctor). See docs/socket-protocol.md.
-}
-
-// socketPath resolves the daemon's Unix socket path:
-// ${XDG_RUNTIME_DIR}/harbormaster/hm.sock, falling back to
-// ~/.local/share/harbormaster/hm.sock when XDG_RUNTIME_DIR is unset (the macOS
-// norm). See DECISIONS.md D3.
-func socketPath() string {
-	if dir := os.Getenv("XDG_RUNTIME_DIR"); dir != "" {
-		return filepath.Join(dir, "harbormaster", "hm.sock")
-	}
-	home, err := os.UserHomeDir()
+	cfg, err := config.LoadGlobal()
 	if err != nil {
-		home = "."
+		log.Fatalf("harbormasterd: config: %v", err)
 	}
-	return filepath.Join(home, ".local", "share", "harbormaster", "hm.sock")
+	if err := daemon.Run(cfg, version); err != nil {
+		if errors.Is(err, daemon.ErrAlreadyRunning) {
+			fmt.Printf("harbormasterd already running at %s\n", cfg.Socket)
+			return
+		}
+		log.Fatalf("harbormasterd: %v", err)
+	}
 }

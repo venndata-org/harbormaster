@@ -19,15 +19,15 @@ and `go test ./...` all pass.
 - [x] `internal/alloc` — deterministic block allocator + bind-probe + reserved ports
       **(heavily unit-tested)**
 - [x] `internal/state` — atomic `state.json` load/save
-- [ ] `internal/ipc` + `harbormasterd` — Unix socket, NDJSON ops
+- [x] `internal/ipc` + `harbormasterd` — Unix socket, NDJSON ops
       (lease / list / release / prune / doctor)
 - [ ] CLI auto-starts the daemon
 - [ ] Wire CLI: `ports`, `up`, `down`, `ls`, `release`, `prune`, `doctor`, `init`
 - [ ] Env-var Tilt integration + `hm up` wrapper
 - [ ] Claude Code skill (SKILL.md + references: CLI, Tilt CLI, retrofit, allocation,
       protocol)
-- [ ] e2e smoke test: two fake instances of one project → assert non-overlapping
-      blocks & ports → release both
+- [x] e2e smoke test: two fake instances of one project → assert non-overlapping
+      blocks & ports → release both (internal/daemon TestE2E_SmokeTwoInstances)
 
 ## Blocked
 
