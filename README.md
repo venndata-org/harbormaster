@@ -41,7 +41,11 @@ def hm_port(name, default):
 WEB = hm_port('web', 3000)
 ```
 
-See [`SPEC.md`](./SPEC.md) for the allocation model, protocol, and config.
+## Usage
+
+**[docs/usage.md](./docs/usage.md)** is the step-by-step guide: install, `hm init`,
+retrofit a Tiltfile, `hm up`, and running multiple worktrees at once. See
+[`SPEC.md`](./SPEC.md) for the allocation model, protocol, and config.
 
 ## Claude Code skill
 
