@@ -47,12 +47,28 @@ WEB = hm_port('web', 3000)
 retrofit a Tiltfile, `hm up`, and running multiple worktrees at once. See
 [`SPEC.md`](./SPEC.md) for the allocation model, protocol, and config.
 
-## Claude Code skill
+## For coding agents
 
-This repo ships a [Claude Code](https://claude.com/claude-code) skill
-(`.claude/skills/harbormaster/`) that teaches an agent to install harbormaster,
-register a project, and retrofit its Tiltfile — plus a working reference for the
-Tilt CLI itself.
+harbormaster is built to be driven by an AI agent. Three on-ramps:
+
+1. **A [Claude Code](https://claude.com/claude-code) skill** at
+   `.claude/skills/harbormaster/` — `SKILL.md` plus references (CLI, Tilt CLI,
+   Tiltfile retrofit, allocation model, socket protocol). It teaches an agent to
+   install harbormaster, run `hm init`, retrofit a Tiltfile to read `HM_PORT_*`,
+   and launch with `hm up`. Install it so agents can use it in **any** project:
+
+   ```sh
+   make install-skill        # -> ~/.claude/skills/harbormaster (all your projects)
+   # or vendor it into one repo:
+   make install-skill SKILL_DIR=/path/to/repo/.claude/skills/harbormaster
+   ```
+
+2. **Machine-readable CLI** — `hm ports --json` returns
+   `{instance, project, label, tilt, block, ports}` for any tool to consume.
+
+3. **The daemon's NDJSON socket protocol** — for non-Claude agents, talk to
+   `harbormasterd` directly over its Unix socket (see
+   [`docs/socket-protocol.md`](./docs/socket-protocol.md)).
 
 ## Install
 

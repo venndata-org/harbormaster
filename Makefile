@@ -10,7 +10,11 @@ ifeq ($(GOBIN),)
 GOBIN := $(shell $(GO) env GOPATH)/bin
 endif
 
-.PHONY: all build install test vet fmt tidy clean
+# Where `make install-skill` drops the Claude Code skill (override for a project:
+#   make install-skill SKILL_DIR=/path/to/repo/.claude/skills/harbormaster)
+SKILL_DIR ?= $(HOME)/.claude/skills/harbormaster
+
+.PHONY: all build install install-skill test vet fmt tidy clean
 
 all: build
 
@@ -25,6 +29,14 @@ install:
 	$(GO) install -ldflags "$(LDFLAGS)" ./cmd/harbormaster
 	$(GO) install -ldflags "$(LDFLAGS)" ./cmd/harbormasterd
 	@ln -sf harbormaster $(GOBIN)/hm
+
+## install-skill: install the Claude Code skill so agents can use it anywhere
+## (defaults to ~/.claude/skills; override SKILL_DIR to vendor into a project)
+install-skill:
+	@rm -rf "$(SKILL_DIR)"
+	@mkdir -p "$(SKILL_DIR)"
+	@cp -R .claude/skills/harbormaster/. "$(SKILL_DIR)/"
+	@echo "installed harbormaster skill -> $(SKILL_DIR)"
 
 ## test: run the full test suite
 test:
