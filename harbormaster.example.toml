@@ -1,0 +1,36 @@
+# harbormaster.example.toml — per-project config.
+#
+# Copy to `harbormaster.toml` at your repo root and COMMIT it. `hm init` will write
+# one for you interactively. Committing it means teammates get the same service
+# topology; each machine's local daemon assigns its own locally-free port block,
+# so ports are coordinated per-machine, not shared across machines.
+
+# Stable project name. Defaults to the repo (main-worktree) basename if omitted.
+name = "groundtruth"
+
+# Services that consume host ports. `offset` is the port's position within this
+# instance's block (offset 0 is always reserved for the Tilt UI). `default` is the
+# legacy hardcoded port, used when harbormaster is not installed so the Tiltfile
+# still works standalone.
+[services]
+web      = { offset = 1, default = 3000 }
+api      = { offset = 2, default = 4000 }
+postgres = { offset = 3, default = 5432 }
+grafana  = { offset = 4, default = 3001 }
+
+# Optional: pin a service to a fixed port for a specific worktree label (e.g. the
+# `main` worktree always serves `web` on 3000). The daemon honors a pin when the
+# port is free and routes other instances around it. (Roadmap — see SPEC §4.4.)
+# [pins.main]
+# web = 3000
+
+# ---------------------------------------------------------------------------
+# Global config lives separately at
+#   ${XDG_CONFIG_HOME:-~/.config}/harbormaster/config.toml
+# and controls the machine-wide pool. Example:
+#
+#   pool_start = 20000
+#   pool_end   = 32000
+#   block_size = 20
+#   reserved   = [5432, 6379]   # never hand these out
+# ---------------------------------------------------------------------------

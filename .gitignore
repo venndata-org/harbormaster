@@ -1,0 +1,13 @@
+# Go build output
+/bin/
+/dist/
+*.test
+*.out
+
+# harbormaster local artifacts
+.harbormaster.env
+*.sock
+state.json
+
+# OS / editor
+.DS_Store
