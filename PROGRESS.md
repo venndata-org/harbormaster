@@ -24,7 +24,7 @@ and `go test ./...` all pass.
 - [x] CLI auto-starts the daemon
 - [x] Wire CLI: `ports`, `up`, `down`, `ls`, `release`, `prune`, `doctor`, `init`
 - [x] Env-var Tilt integration + `hm up` wrapper
-- [ ] Claude Code skill (SKILL.md + references: CLI, Tilt CLI, retrofit, allocation,
+- [x] Claude Code skill (SKILL.md + references: CLI, Tilt CLI, retrofit, allocation,
       protocol)
 - [x] e2e smoke test: two fake instances of one project → assert non-overlapping
       blocks & ports → release both (internal/daemon TestE2E_SmokeTwoInstances)
