@@ -15,7 +15,7 @@ and `go test ./...` all pass.
 ## MVP (SPEC §10)
 
 - [x] `internal/config` — global `config.toml` + per-project `harbormaster.toml`
-- [ ] `internal/gitident` — git-derived project / instance / label (worktree-aware)
+- [x] `internal/gitident` — git-derived project / instance / label (worktree-aware)
 - [ ] `internal/alloc` — deterministic block allocator + bind-probe + reserved ports
       **(heavily unit-tested)**
 - [ ] `internal/state` — atomic `state.json` load/save
