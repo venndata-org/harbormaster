@@ -7,16 +7,12 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"os"
 )
 
 // version is overridden at build time via -ldflags "-X main.version=...".
 var version = "dev"
-
-// errNotImplemented is returned by command stubs that are not wired up yet.
-var errNotImplemented = errors.New("not implemented yet")
 
 const usage = `harbormaster — the port authority for your local dev harbor (alias: hm)
 

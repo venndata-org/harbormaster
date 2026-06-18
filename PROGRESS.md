@@ -21,9 +21,9 @@ and `go test ./...` all pass.
 - [x] `internal/state` — atomic `state.json` load/save
 - [x] `internal/ipc` + `harbormasterd` — Unix socket, NDJSON ops
       (lease / list / release / prune / doctor)
-- [ ] CLI auto-starts the daemon
-- [ ] Wire CLI: `ports`, `up`, `down`, `ls`, `release`, `prune`, `doctor`, `init`
-- [ ] Env-var Tilt integration + `hm up` wrapper
+- [x] CLI auto-starts the daemon
+- [x] Wire CLI: `ports`, `up`, `down`, `ls`, `release`, `prune`, `doctor`, `init`
+- [x] Env-var Tilt integration + `hm up` wrapper
 - [ ] Claude Code skill (SKILL.md + references: CLI, Tilt CLI, retrofit, allocation,
       protocol)
 - [x] e2e smoke test: two fake instances of one project → assert non-overlapping

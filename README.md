@@ -4,8 +4,11 @@
 at once — including multiple git worktrees of the *same* project — without ports
 ever colliding.
 
-> Status: **early — design + scaffold.** The full design lives in [`SPEC.md`](./SPEC.md).
-> The implementation is being built against that spec. Not yet usable.
+> Status: **functional MVP in progress.** The daemon, allocator, CLI, and Tilt
+> env-var integration work today — `hm up`, `hm ports`, `hm ls`, `hm release`,
+> `hm doctor` all run, and two worktrees of one repo already get conflict-free
+> port blocks. The bundled Claude Code skill is the last MVP piece. The full design
+> lives in [`SPEC.md`](./SPEC.md); progress is tracked in [`PROGRESS.md`](./PROGRESS.md).
 
 ## Why
 

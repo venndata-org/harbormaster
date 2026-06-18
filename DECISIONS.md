@@ -4,6 +4,16 @@ Engineering decisions made during the autonomous build that SPEC.md leaves open 
 that refine it). Newest first. If a decision changes the design, SPEC.md is amended
 to match — these notes capture the _why_.
 
+## 2026-06-18 — CLI
+
+### D9 — `hm down` keeps the lease
+
+SPEC §6 says `hm down` should "mark inactive". MVP has no liveness tracking (that
+is roadmap, SPEC §10), and releasing the lease would discard the instance's stable
+block — defeating the whole point of stable per-worktree ports. So `hm down` runs
+`tilt down` with the HM_* env and **keeps** the lease; freeing it is explicit via
+`hm release`. "Inactive" marking arrives with heartbeat liveness later.
+
 ## 2026-06-18 — daemon / ipc
 
 ### D7 — Lease engine lives in `internal/daemon`, not `cmd/`
