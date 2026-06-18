@@ -19,6 +19,10 @@ allocation key is `(worktree_path, service)`, so N worktrees of one repo can all
 Use this skill to install harbormaster, register a project, retrofit its Tiltfile
 to consume assigned ports, and run it.
 
+> **Retrofitting a whole project in one shot?** Hand an agent the ready-made seed
+> prompt in [references/retrofit-prompt.md](references/retrofit-prompt.md) — it
+> walks through reserving ports, checking for conflicts, and updating the infra.
+
 ## When to use
 
 - A Tiltfile hardcodes host ports (Tilt UI `10350`, web `3000`, api `4000`,
@@ -90,6 +94,7 @@ hm prune            # reclaim leases for deleted worktrees
 
 Read these as needed (they keep this file short):
 
+- [references/retrofit-prompt.md](references/retrofit-prompt.md) — **seed prompt** to drive a full project retrofit (reserve ports, check conflicts, update infra).
 - [references/cli-commands.md](references/cli-commands.md) — every `hm` subcommand + flags.
 - [references/tilt-cli.md](references/tilt-cli.md) — the Tilt CLI itself (up/down/args/ports).
 - [references/tiltfile-retrofit.md](references/tiltfile-retrofit.md) — step-by-step Tiltfile retrofit.
