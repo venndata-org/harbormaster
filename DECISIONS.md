@@ -38,6 +38,25 @@ as in the SPEC worked example) this reproduces the configured ports exactly.
 Non-contiguous explicit offsets and per-worktree pins (SPEC §4.4) are deferred to
 the roadmap; the wire format stays the plain `services: [...]` shape from SPEC §8.
 
+### D6 — Project name: config wins; git default handles the `/main` layout
+
+SPEC §6 says `project = basename(main worktree toplevel)`. Taken literally that
+yields **"main"** for the opera layout (`~/dev-vd/<project>/main`) — which is
+exactly how this repo and the SPEC worked example are laid out, so every project
+would be named "main". Resolution:
+
+1. The authoritative project name is the `name` field in `harbormaster.toml` (SPEC
+   §7 shows `name = "groundtruth"`); the CLI prefers it. It is committed, so all
+   worktrees agree.
+2. The git-derived value in `internal/gitident` is only a **default** (used by
+   `hm init` and when no config exists). To make that default useful under the
+   opera layout, when the main worktree's basename is the generic `main`/`master`
+   we use the containing directory's name instead.
+
+This keeps allocation correct regardless (the key is the instance path, not the
+project name) and makes the project label sensible. SPEC §6 should be read with
+this refinement.
+
 ### D5 — Allocator takes an injectable port prober
 
 `internal/alloc` will depend on a `Prober` func (`port -> free?`) instead of binding
