@@ -16,9 +16,9 @@ and `go test ./...` all pass.
 
 - [x] `internal/config` — global `config.toml` + per-project `harbormaster.toml`
 - [x] `internal/gitident` — git-derived project / instance / label (worktree-aware)
-- [ ] `internal/alloc` — deterministic block allocator + bind-probe + reserved ports
+- [x] `internal/alloc` — deterministic block allocator + bind-probe + reserved ports
       **(heavily unit-tested)**
-- [ ] `internal/state` — atomic `state.json` load/save
+- [x] `internal/state` — atomic `state.json` load/save
 - [ ] `internal/ipc` + `harbormasterd` — Unix socket, NDJSON ops
       (lease / list / release / prune / doctor)
 - [ ] CLI auto-starts the daemon
