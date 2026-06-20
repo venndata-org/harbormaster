@@ -42,11 +42,14 @@ type Response struct {
 	// ping
 	Version string `json:"version,omitempty"`
 
-	// lease
+	// lease / get
 	Tilt     int            `json:"tilt,omitempty"`
 	Ports    map[string]int `json:"ports,omitempty"`
 	Block    *[2]int        `json:"block,omitempty"`
 	Warnings []string       `json:"warnings,omitempty"`
+
+	// get: whether the instance currently holds a lease
+	Found bool `json:"found,omitempty"`
 
 	// list
 	Instances []InstanceInfo `json:"instances,omitempty"`

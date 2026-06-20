@@ -165,6 +165,63 @@ func TestDoctor(t *testing.T) {
 	}
 }
 
+// TestLease_IdempotentWhileOwnPortsBound is the regression test for the
+// self-conflict bug: re-leasing while the instance's own ports are in use (its
+// Tilt is running) must return the same ports, not relocate them.
+func TestLease_IdempotentWhileOwnPortsBound(t *testing.T) {
+	d := newTestDaemon(t, freeAll)
+	first := d.Handle(leaseReq("/p/main", "web", "api"))
+	if !first.OK {
+		t.Fatalf("first lease: %+v", first)
+	}
+	// Simulate the running Tilt/services holding those ports.
+	d.Probe = blockPort(first.Tilt, first.Ports["web"], first.Ports["api"])
+
+	again := d.Handle(leaseReq("/p/main", "web", "api"))
+	if again.Tilt != first.Tilt || again.Ports["web"] != first.Ports["web"] || again.Ports["api"] != first.Ports["api"] {
+		t.Fatalf("re-lease while running must be stable:\n first=%+v\n again=%+v", first, again)
+	}
+	if len(again.Warnings) != 0 {
+		t.Fatalf("no relocation expected, got warnings %v", again.Warnings)
+	}
+}
+
+func TestGet_ReadOnly(t *testing.T) {
+	d := newTestDaemon(t, freeAll)
+	leased := d.Handle(leaseReq("/p/main", "web"))
+	// Even with its ports "in use", get returns the stored ports and never relocates.
+	d.Probe = blockPort(leased.Tilt, leased.Ports["web"])
+
+	got := d.Handle(ipc.Request{Op: "get", Instance: "/p/main"})
+	if !got.OK || !got.Found {
+		t.Fatalf("get should find the lease: %+v", got)
+	}
+	if got.Tilt != leased.Tilt || got.Ports["web"] != leased.Ports["web"] {
+		t.Fatalf("get should return stored ports unchanged: got %+v, leased %+v", got, leased)
+	}
+	if len(got.Warnings) != 0 {
+		t.Fatalf("get must not probe/relocate, got warnings %v", got.Warnings)
+	}
+	if got.Block == nil || *got.Block != [2]int{20000, 20019} {
+		t.Fatalf("get block wrong: %v", got.Block)
+	}
+}
+
+func TestGet_NotFound(t *testing.T) {
+	d := newTestDaemon(t, freeAll)
+	got := d.Handle(ipc.Request{Op: "get", Instance: "/never/leased"})
+	if !got.OK || got.Found {
+		t.Fatalf("get on an unleased instance should be ok with found=false: %+v", got)
+	}
+}
+
+func TestGet_MissingInstance(t *testing.T) {
+	d := newTestDaemon(t, freeAll)
+	if r := d.Handle(ipc.Request{Op: "get"}); r.OK {
+		t.Fatalf("get without instance should error: %+v", r)
+	}
+}
+
 func TestUnknownOp(t *testing.T) {
 	d := newTestDaemon(t, freeAll)
 	if r := d.Handle(ipc.Request{Op: "bogus"}); r.OK || r.Error == "" {

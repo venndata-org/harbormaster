@@ -32,7 +32,9 @@ Run `tilt down` with the same `HM_*` env. Keeps the lease (the block stays stabl
 use `hm release` to free it.
 
 ### `hm ports [--json | --env | --write]`
-Resolve and print this checkout's berths.
+Print this checkout's berths. Read-only when a lease already exists (it never
+re-assigns an instance's ports just because its Tilt is running); allocates only on
+first use.
 - *(default)* human table
 - `--json` — `{instance, project, label, tilt, block, ports}`
 - `--env` — shell lines: `HM_TILT_PORT=…`, `HM_PORT_WEB=…`

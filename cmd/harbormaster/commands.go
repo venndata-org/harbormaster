@@ -81,7 +81,7 @@ func cmdPorts(args []string) error {
 	if err := parseFlags(fs, args); err != nil {
 		return err
 	}
-	resp, id, _, err := leaseCurrent()
+	resp, id, _, err := portsCurrent()
 	if err != nil {
 		return err
 	}

@@ -4,6 +4,37 @@ Engineering decisions made during the autonomous build that SPEC.md leaves open 
 that refine it). Newest first. If a decision changes the design, SPEC.md is amended
 to match — these notes capture the _why_.
 
+## 2026-06-20 — fix: instance self-conflict
+
+### D10 — ownership-aware probe + read-only `hm ports`
+
+**Bug:** re-leasing an instance bind-probed every berth, and a port held by the
+instance's *own* running Tilt was indistinguishable from an external squatter — so
+the lease relocated the berths and persisted the new numbers. After `hm up`, a
+later `hm ports`/`hm up` in that dir reported and saved *different* ports than Tilt
+was serving ("conflicting with itself"). The block base stayed stable; only the
+within-block offsets churned (relocated while running, restored when stopped).
+
+**Fix (two parts):**
+
+1. **Ownership-aware probe (alloc).** `alloc.Request` carries `Own` — the set of
+   ports the instance already holds. In `assignWithin`, a bound port that is one of
+   `Own` is treated as usable (it's the instance's own service, not a squatter), so
+   re-leasing a running checkout is idempotent. A genuinely external squatter (a
+   bound port that is *not* owned) still relocates. The daemon builds `Own` from the
+   instance's stored berths.
+2. **Read-only `get` op + `hm ports`.** A new `get` op returns the instance's stored
+   lease without allocating, probing, or writing state. `hm ports` uses `get` when a
+   lease exists and only falls back to `lease` on first use — so showing your ports
+   never mutates them.
+
+**Residual tradeoff:** if an external process squats *exactly* one of an instance's
+recorded ports while it is stopped, the ownership rule hands that port back anyway
+(then `hm up` → Tilt surfaces the bind error). Rare, and the alternative — moving
+your own running services — is worse and common. Precise resolution needs liveness
+tracking (roadmap). This also bounds the `doctor` caveat in [D8]: `doctor` still
+*reports* bound leased ports, but the allocator no longer *acts* on them.
+
 ## 2026-06-18 — CLI
 
 ### D9 — `hm down` keeps the lease

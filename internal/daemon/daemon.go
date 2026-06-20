@@ -62,6 +62,8 @@ func (d *Daemon) Handle(req ipc.Request) ipc.Response {
 		return ipc.Response{OK: true, Version: d.version}
 	case "lease":
 		return d.lease(req)
+	case "get":
+		return d.get(req)
 	case "list":
 		return d.list()
 	case "release":
@@ -82,7 +84,8 @@ func (d *Daemon) lease(req ipc.Request) ipc.Response {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
-	res, err := alloc.Allocate(d.pool, d.blocks(), alloc.Request{Instance: req.Instance, Services: req.Services}, d.Probe)
+	res, err := alloc.Allocate(d.pool, d.blocks(),
+		alloc.Request{Instance: req.Instance, Services: req.Services, Own: d.ownPorts(req.Instance)}, d.Probe)
 	if err != nil {
 		return ipc.Err("%v", err)
 	}
@@ -109,6 +112,32 @@ func (d *Daemon) lease(req ipc.Request) ipc.Response {
 
 	blk := res.Block.Range()
 	return ipc.Response{OK: true, Tilt: res.Tilt, Ports: res.Ports, Block: &blk, Warnings: res.Warnings}
+}
+
+// get returns the instance's stored lease without allocating, probing, or
+// mutating state — the read-only path behind `hm ports`. Found is false when the
+// instance holds no lease. See DECISIONS.md D10.
+func (d *Daemon) get(req ipc.Request) ipc.Response {
+	if req.Instance == "" {
+		return ipc.Err("get: missing instance")
+	}
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	inst, ok := d.st.Instances[req.Instance]
+	if !ok {
+		return ipc.Response{OK: true, Found: false}
+	}
+	ports := make(map[string]int, len(inst.Berths))
+	tilt := 0
+	for svc, port := range inst.Berths {
+		if svc == "tilt" {
+			tilt = port
+			continue
+		}
+		ports[svc] = port
+	}
+	blk := inst.Block
+	return ipc.Response{OK: true, Found: true, Tilt: tilt, Ports: ports, Block: &blk}
 }
 
 func (d *Daemon) list() ipc.Response {
@@ -189,6 +218,20 @@ func (d *Daemon) blocks() map[string]alloc.Block {
 		m[path] = alloc.Block{Base: inst.Block[0], Size: inst.Block[1] - inst.Block[0] + 1}
 	}
 	return m
+}
+
+// ownPorts returns the set of ports an instance already holds, so the allocator
+// does not treat the instance's own running services as squatters on re-lease.
+func (d *Daemon) ownPorts(instance string) map[int]bool {
+	inst, ok := d.st.Instances[instance]
+	if !ok || len(inst.Berths) == 0 {
+		return nil
+	}
+	own := make(map[int]bool, len(inst.Berths))
+	for _, port := range inst.Berths {
+		own[port] = true
+	}
+	return own
 }
 
 // headroom is the number of free blocks left in the pool.

@@ -47,6 +47,11 @@ type Pool struct {
 type Request struct {
 	Instance string   // absolute checkout path; the allocation key
 	Services []string // ordered service names; the implicit Tilt port is separate
+	// Own is the set of ports this instance already holds (from its last lease).
+	// A port that is bound but belongs to this instance is not treated as a
+	// conflict with itself — it is the instance's own running Tilt/services. This
+	// keeps re-leasing a running checkout idempotent. See DECISIONS.md D10.
+	Own map[int]bool
 }
 
 // Prober reports whether a port is free (bindable) on the loopback interface.
@@ -92,7 +97,7 @@ func Allocate(pool Pool, existing map[string]Block, req Request, probe Prober) (
 	// Reuse a stable block if this instance already holds one.
 	if b, ok := existing[req.Instance]; ok {
 		b.Size = pool.BlockSize
-		return assignWithin(b, req.Services, probe, pool.Reserved), nil
+		return assignWithin(b, req.Services, probe, pool.Reserved, req.Own), nil
 	}
 
 	// New instance: take the lowest free block that can host the berths.
@@ -101,7 +106,7 @@ func Allocate(pool Pool, existing map[string]Block, req Request, probe Prober) (
 		if occupied[base] {
 			continue
 		}
-		res := assignWithin(Block{Base: base, Size: pool.BlockSize}, req.Services, probe, pool.Reserved)
+		res := assignWithin(Block{Base: base, Size: pool.BlockSize}, req.Services, probe, pool.Reserved, req.Own)
 		if res.Complete(req.Services) {
 			return res, nil
 		}
@@ -111,8 +116,10 @@ func Allocate(pool Pool, existing map[string]Block, req Request, probe Prober) (
 
 // assignWithin places tilt (offset 0) and each service (offsets 1..N) inside the
 // block, relocating to another free offset when a nominal port is reserved or in
-// use, and recording a warning when it does.
-func assignWithin(block Block, services []string, probe Prober, reserved map[int]bool) Result {
+// use, and recording a warning when it does. A port in own belongs to this
+// instance, so a bind-probe failure on it is ignored — it is the instance's own
+// running service, not an external squatter.
+func assignWithin(block Block, services []string, probe Prober, reserved, own map[int]bool) Result {
 	res := Result{Block: block, Ports: make(map[string]int, len(services))}
 	used := make(map[int]bool, block.Size)
 
@@ -123,6 +130,9 @@ func assignWithin(block Block, services []string, probe Prober, reserved map[int
 		port := block.Base + off
 		if reserved[port] {
 			return false
+		}
+		if own[port] {
+			return true // this instance's own port — not a conflict with itself
 		}
 		return probe(port)
 	}

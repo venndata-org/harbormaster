@@ -18,6 +18,10 @@ version lives in `docs/socket-protocol.md` in the repo.
 {"op":"lease","instance":"/abs/path","project":"p","label":"feat","services":["web","api"]}
 // → {"ok":true,"tilt":20020,"ports":{"web":20021,"api":20022},"block":[20020,20039],"warnings":[]}
 
+{"op":"get","instance":"/abs/path"}   // read-only: stored lease, no allocate/probe
+// → {"ok":true,"found":true,"tilt":20020,"ports":{"web":20021},"block":[20020,20039]}
+// → {"ok":true,"found":false}         // when the instance has no lease
+
 {"op":"list"}
 // → {"ok":true,"instances":[{instance,project,label,block,berths,createdAt,lastSeenAt}]}
 
@@ -31,8 +35,10 @@ version lives in `docs/socket-protocol.md` in the repo.
 // → {"ok":true,"leases":N,"headroom":N,"squatters":[{instance,service,port}]}
 ```
 
-`lease` is idempotent per instance: the block base is stable once assigned. The
-daemon places `tilt` at block offset 0 and services at offsets 1..N **in request
-order**, so `services` should be sent in the order they appear in
+`lease` is idempotent per instance: the block base is stable once assigned, and the
+instance's own in-use ports are not treated as conflicts, so re-leasing a running
+checkout returns the same ports. `get` is the read-only path behind `hm ports`
+(never mutates). The daemon places `tilt` at block offset 0 and services at offsets
+1..N **in request order**, so `services` should be sent in the order they appear in
 `harbormaster.toml` (the CLI sorts by configured `offset`). `ping` doubles as the
 liveness check the CLI uses to decide whether to auto-start the daemon.

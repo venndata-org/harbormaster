@@ -68,6 +68,13 @@ func (c *Client) Lease(instance, project, label string, services []string) (Resp
 	return c.call(Request{Op: "lease", Instance: instance, Project: project, Label: label, Services: services})
 }
 
+// Get returns the instance's current lease without allocating or probing. The
+// reply's Found reports whether a lease exists. This is the read-only path behind
+// `hm ports`. See DECISIONS.md D10.
+func (c *Client) Get(instance string) (Response, error) {
+	return c.call(Request{Op: "get", Instance: instance})
+}
+
 // List returns every leased instance.
 func (c *Client) List() (Response, error) { return c.call(Request{Op: "list"}) }
 
