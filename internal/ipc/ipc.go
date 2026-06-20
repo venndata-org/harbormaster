@@ -89,6 +89,10 @@ func (c *Client) Prune() (Response, error) { return c.call(Request{Op: "prune"})
 // Doctor reports daemon/pool health.
 func (c *Client) Doctor() (Response, error) { return c.call(Request{Op: "doctor"}) }
 
+// Shutdown asks the daemon to exit gracefully. Unknown to pre-D11 daemons (they
+// reply with an error), so callers fall back to a pidfile signal.
+func (c *Client) Shutdown() (Response, error) { return c.call(Request{Op: "shutdown"}) }
+
 // IsLive reports whether a daemon is answering on socket.
 func IsLive(socket string) bool {
 	c := &Client{Socket: socket}

@@ -6,27 +6,84 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
 	"github.com/venndata-org/harbormaster/internal/config"
+	"github.com/venndata-org/harbormaster/internal/daemon"
 	"github.com/venndata-org/harbormaster/internal/gitident"
 	"github.com/venndata-org/harbormaster/internal/ipc"
 )
 
 // daemonClient returns a client to the daemon, auto-starting it if the socket is
-// dead.
+// dead and restarting it if a stale (different-version) daemon is answering. The
+// version check stops the new CLI from talking to an old daemon that doesn't know
+// newer ops. See DECISIONS.md D11.
 func daemonClient() (*ipc.Client, config.Global, error) {
 	cfg, err := config.LoadGlobal()
 	if err != nil {
 		return nil, cfg, fmt.Errorf("config: %w", err)
 	}
+	c := &ipc.Client{Socket: cfg.Socket}
 	if !ipc.IsLive(cfg.Socket) {
 		if err := startDaemon(cfg); err != nil {
 			return nil, cfg, err
 		}
+		return c, cfg, nil
 	}
-	return &ipc.Client{Socket: cfg.Socket}, cfg, nil
+	// A daemon is answering — make sure it's our version, not a stale one.
+	if ping, err := c.Ping(); err == nil && ping.Version != "" && ping.Version != version {
+		if err := restartDaemon(cfg, c); err != nil {
+			return nil, cfg, fmt.Errorf("restart stale daemon (%s -> %s): %w", ping.Version, version, err)
+		}
+	}
+	return c, cfg, nil
+}
+
+// restartDaemon stops a stale daemon (graceful shutdown op, then a pidfile signal
+// as fallback) and starts a fresh one from this binary.
+func restartDaemon(cfg config.Global, c *ipc.Client) error {
+	_, _ = c.Shutdown() // graceful; unknown to pre-D11 daemons
+	if !waitDead(cfg.Socket, 2*time.Second) {
+		if pid := readDaemonPID(cfg); pid > 0 {
+			_ = syscall.Kill(pid, syscall.SIGTERM)
+			if !waitDead(cfg.Socket, 2*time.Second) {
+				_ = syscall.Kill(pid, syscall.SIGKILL)
+				waitDead(cfg.Socket, 2*time.Second)
+			}
+		}
+	}
+	if ipc.IsLive(cfg.Socket) {
+		return errors.New("could not stop the running daemon; kill it manually (lsof " + cfg.Socket + ")")
+	}
+	_ = os.Remove(cfg.Socket)
+	return startDaemon(cfg)
+}
+
+// waitDead polls until no daemon answers on the socket, or the timeout elapses.
+func waitDead(socket string, d time.Duration) bool {
+	deadline := time.Now().Add(d)
+	for {
+		if !ipc.IsLive(socket) {
+			return true
+		}
+		if time.Now().After(deadline) {
+			return false
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+}
+
+// readDaemonPID reads the daemon's pidfile, returning 0 if absent/unreadable.
+func readDaemonPID(cfg config.Global) int {
+	data, err := os.ReadFile(daemon.PidPath(cfg))
+	if err != nil {
+		return 0
+	}
+	pid, _ := strconv.Atoi(strings.TrimSpace(string(data)))
+	return pid
 }
 
 // startDaemon re-execs this binary as `hm daemon`, detached into its own session,

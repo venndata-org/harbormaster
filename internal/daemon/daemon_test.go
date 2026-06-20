@@ -222,6 +222,31 @@ func TestGet_MissingInstance(t *testing.T) {
 	}
 }
 
+func TestShutdownOp(t *testing.T) {
+	d := newTestDaemon(t, freeAll)
+	r := d.Handle(ipc.Request{Op: "shutdown"})
+	if !r.OK {
+		t.Fatalf("shutdown: %+v", r)
+	}
+	select {
+	case <-d.quit:
+	default:
+		t.Fatal("shutdown should close the quit channel")
+	}
+	// idempotent: a second shutdown must not panic (double close) and stays ok
+	if r2 := d.Handle(ipc.Request{Op: "shutdown"}); !r2.OK {
+		t.Fatalf("second shutdown: %+v", r2)
+	}
+}
+
+func TestPidPath(t *testing.T) {
+	cfg := config.DefaultGlobal()
+	cfg.Socket = "/run/hm/hm.sock"
+	if got, want := PidPath(cfg), "/run/hm/harbormasterd.pid"; got != want {
+		t.Fatalf("PidPath = %q, want %q", got, want)
+	}
+}
+
 func TestUnknownOp(t *testing.T) {
 	d := newTestDaemon(t, freeAll)
 	if r := d.Handle(ipc.Request{Op: "bogus"}); r.OK || r.Error == "" {

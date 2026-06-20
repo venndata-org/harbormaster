@@ -10,6 +10,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"sort"
 	"sync"
 	"syscall"
@@ -20,6 +21,12 @@ import (
 	"github.com/venndata-org/harbormaster/internal/ipc"
 	"github.com/venndata-org/harbormaster/internal/state"
 )
+
+// PidPath is where the daemon records its PID, next to the socket. The CLI reads
+// it to stop a stale daemon during a version-skew restart. See DECISIONS.md D11.
+func PidPath(cfg config.Global) string {
+	return filepath.Join(filepath.Dir(cfg.Socket), "harbormasterd.pid")
+}
 
 // ErrAlreadyRunning is returned by Run when a daemon already owns the socket.
 var ErrAlreadyRunning = errors.New("daemon already running")
@@ -37,6 +44,9 @@ type Daemon struct {
 	mu        sync.Mutex
 	st        *state.State
 	statePath string
+
+	quit     chan struct{} // closed by the shutdown op to stop Run
+	quitOnce sync.Once
 }
 
 // New builds a Daemon, loading any existing state from cfg.State.
@@ -52,6 +62,7 @@ func New(cfg config.Global, version string) (*Daemon, error) {
 		Probe:     alloc.TCPProbe,
 		st:        st,
 		statePath: cfg.State,
+		quit:      make(chan struct{}),
 	}, nil
 }
 
@@ -59,6 +70,9 @@ func New(cfg config.Global, version string) (*Daemon, error) {
 func (d *Daemon) Handle(req ipc.Request) ipc.Response {
 	switch req.Op {
 	case "ping":
+		return ipc.Response{OK: true, Version: d.version}
+	case "shutdown":
+		d.quitOnce.Do(func() { close(d.quit) })
 		return ipc.Response{OK: true, Version: d.version}
 	case "lease":
 		return d.lease(req)
@@ -260,10 +274,17 @@ func Run(cfg config.Global, version string) error {
 	}
 	defer srv.Close()
 
+	pidPath := PidPath(cfg)
+	_ = os.WriteFile(pidPath, []byte(fmt.Sprintf("%d\n", os.Getpid())), 0o644)
+	defer os.Remove(pidPath)
+
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
-		<-sigs
+		select {
+		case <-sigs: // SIGINT/SIGTERM
+		case <-d.quit: // shutdown op
+		}
 		srv.Close()
 	}()
 

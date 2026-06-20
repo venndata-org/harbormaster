@@ -4,6 +4,27 @@ Engineering decisions made during the autonomous build that SPEC.md leaves open 
 that refine it). Newest first. If a decision changes the design, SPEC.md is amended
 to match — these notes capture the _why_.
 
+## 2026-06-20 — fix: daemon version skew
+
+### D11 — CLI restarts a stale (wrong-version) daemon
+
+**Bug:** the CLI auto-starts a daemon when none is running, but never checked a
+*running* daemon's version. After a protocol change (e.g. the `get` op in D10), a
+long-lived old daemon kept answering and the new CLI got a cryptic
+`unknown op: "get"`. Reinstalling the binary doesn't help — the old process is
+already in memory.
+
+**Fix:** the daemon now writes a **pidfile** next to its socket
+(`harbormasterd.pid`) and handles a graceful **`shutdown`** op; `ping` already
+returns the daemon version. On connect, the CLI compares the daemon's version to
+its own; on mismatch it **restarts** the daemon — graceful `shutdown` first, then a
+pidfile `SIGTERM`/`SIGKILL` fallback — then re-execs the current binary (so the new
+daemon always matches). Result: updating the binary is enough; the daemon follows.
+
+**One-time caveat:** daemons started *before* D11 wrote no pidfile and don't know
+`shutdown`, so the CLI can't auto-stop them — it errors clearly (kill via `lsof
+<socket>`). Every daemon started from D11 onward is auto-managed.
+
 ## 2026-06-20 — fix: instance self-conflict
 
 ### D10 — ownership-aware probe + read-only `hm ports`
