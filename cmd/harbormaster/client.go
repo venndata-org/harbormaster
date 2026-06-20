@@ -108,3 +108,36 @@ func leaseCurrent() (ipc.Response, gitident.Identity, config.Project, error) {
 	}
 	return resp, id, proj, nil
 }
+
+// portsCurrent resolves $PWD's ports read-only when a lease already exists,
+// allocating one only on first use. This keeps `hm ports` from re-probing and
+// relocating an instance's own running ports. See DECISIONS.md D10.
+func portsCurrent() (ipc.Response, gitident.Identity, config.Project, error) {
+	id, proj, err := identity()
+	if err != nil {
+		return ipc.Response{}, id, proj, err
+	}
+	c, _, err := daemonClient()
+	if err != nil {
+		return ipc.Response{}, id, proj, err
+	}
+	resp, err := c.Get(id.Instance)
+	if err != nil {
+		return ipc.Response{}, id, proj, err
+	}
+	if !resp.OK {
+		return resp, id, proj, errors.New(resp.Error)
+	}
+	if resp.Found {
+		return resp, id, proj, nil // existing lease — pure read, no mutation
+	}
+	// No lease yet: create one on first use.
+	resp, err = c.Lease(id.Instance, id.Project, id.Label, proj.OrderedServices())
+	if err != nil {
+		return ipc.Response{}, id, proj, err
+	}
+	if !resp.OK {
+		return resp, id, proj, errors.New(resp.Error)
+	}
+	return resp, id, proj, nil
+}

@@ -56,7 +56,20 @@ On success `ok` is `true` plus op-specific fields below.
   relocated.
 
 `lease` is idempotent for a given instance: the block base is stable across calls
-once assigned.
+once assigned, and the instance's own in-use ports are not treated as conflicts
+(DECISIONS.md D10), so re-leasing a running checkout returns the same ports.
+
+### `get` — read this instance's lease (read-only)
+
+```json
+→ {"op": "get", "instance": "/Users/av/dev-vd/groundtruth/feat-x"}
+← {"ok": true, "found": true, "tilt": 20020, "ports": {"web": 20021}, "block": [20020, 20039]}
+// no lease yet:
+← {"ok": true, "found": false}
+```
+
+Returns the stored lease **without allocating, probing, or mutating state** — the
+read path behind `hm ports`. `found` reports whether a lease exists.
 
 ### `list` — every instance
 

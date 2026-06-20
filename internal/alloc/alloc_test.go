@@ -225,6 +225,47 @@ func TestAllocate_Deterministic(t *testing.T) {
 	}
 }
 
+// TestAllocate_OwnPortsNotRelocated: a re-lease whose own ports are all bound
+// (its Tilt/services are running) keeps the same ports — no self-conflict.
+func TestAllocate_OwnPortsNotRelocated(t *testing.T) {
+	pool := defaultPool()
+	existing := map[string]Block{"/p/main": {Base: 20000, Size: 20}}
+	// tilt 20000, web 20001, api 20002 are all in use (the instance is running)...
+	probe := blockedPorts(20000, 20001, 20002)
+	// ...but they belong to this instance.
+	own := map[int]bool{20000: true, 20001: true, 20002: true}
+
+	r, err := Allocate(pool, existing, Request{Instance: "/p/main", Services: []string{"web", "api"}, Own: own}, probe)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.Tilt != 20000 || r.Ports["web"] != 20001 || r.Ports["api"] != 20002 {
+		t.Fatalf("own bound ports should stay put, got %+v", r)
+	}
+	if len(r.Warnings) != 0 {
+		t.Fatalf("no relocation expected, got warnings %v", r.Warnings)
+	}
+}
+
+// TestAllocate_BoundPortsRelocateWithoutOwnership is the contrast: the same bound
+// ports with no ownership info DO relocate (an external squatter).
+func TestAllocate_BoundPortsRelocateWithoutOwnership(t *testing.T) {
+	pool := defaultPool()
+	existing := map[string]Block{"/p/main": {Base: 20000, Size: 20}}
+	probe := blockedPorts(20000, 20001, 20002)
+
+	r, err := Allocate(pool, existing, Request{Instance: "/p/main", Services: []string{"web", "api"}}, probe)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.Tilt == 20000 {
+		t.Fatal("expected relocation when ports are bound and not owned")
+	}
+	if len(r.Warnings) == 0 {
+		t.Fatal("expected relocation warnings")
+	}
+}
+
 func TestBlock_Helpers(t *testing.T) {
 	b := Block{Base: 20020, Size: 20}
 	if b.Hi() != 20039 {
